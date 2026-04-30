@@ -1,12 +1,10 @@
-import json
+import pandas as pd
 
 def load_documents(path):
-    pass
-
+    return pd.read_json(path)
 
 def load_queries(path):
-    pass
+    return pd.read_json(path)
 
 def load_qrels(path):
-    pass
-
+    return pd.read_json(path)
