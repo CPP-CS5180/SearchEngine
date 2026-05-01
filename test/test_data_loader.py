@@ -2,7 +2,7 @@ import os
 
 import pandas as pd
 
-from loader import load_documents, load_queries, load_qrels
+from data_loader import load_documents, load_queries, load_qrels
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 DOCS_PATH = os.path.join(BASE_DIR, 'dataset/documents.json')
