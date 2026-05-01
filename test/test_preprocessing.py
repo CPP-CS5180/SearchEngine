@@ -1,6 +1,6 @@
 import pandas as pd
 
-from Preprocessor import preprocess, preprocess_documents
+from preprocessor import preprocess, preprocess_documents
 
 
 def test_preprocess_returns_list():
