@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block title %}{{ doc_id }}{% endblock %}
+
+{% block content %}
+<p><a id="back-link" href="{{ url_for('index') }}">&larr; Back to search</a></p>
+<h1>{{ doc_id }}</h1>
+<div class="doc-body" style="max-width: 800px; white-space: pre-wrap;">{{ text }}</div>
+
+<script>
+    if (document.referrer) {
+        try {
+            const ref = new URL(document.referrer);
+            if (ref.origin === window.location.origin) {
+                document.getElementById("back-link").href = document.referrer;
+            }
+        } catch (_) {}
+    }
+</script>
+{% endblock %}
