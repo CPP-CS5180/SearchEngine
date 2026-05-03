@@ -10,6 +10,9 @@ dependencies = [
     "pandas>=3.0.2",
 ]
 
+[project.scripts]
+search_engine = "__main__:main"
+
 [dependency-groups]
 dev = [
     "pytest>=9.0.3",

@@ -10,14 +10,17 @@ _DEFAULT_PATHS = {
 }
 
 
-class DatasetLoader:
+class Dataset:
     def __init__(self, docs_path=None, queries_path=None, qrels_path=None):
-        self.documents = load_documents(docs_path or _DEFAULT_PATHS['documents'])
-        self.queries   = load_queries(queries_path or _DEFAULT_PATHS['queries'])
-        self.qrels     = load_qrels(qrels_path or _DEFAULT_PATHS['qrels'])
+        """
+        Reads from the dataset paths provided and loads in
+        """
+        self.documents = _load_documents(docs_path or _DEFAULT_PATHS['documents'])
+        self.queries   = _load_queries(queries_path or _DEFAULT_PATHS['queries'])
+        self.qrels     = _load_qrels(qrels_path or _DEFAULT_PATHS['qrels'])
         self._doc_index = self.documents.set_index('doc_id')
 
-    def get_document(self, doc_id):
+    def get_document(self, doc_id: str):
         """Return the document row for a given doc_id, or None if not found."""
         key = str(doc_id)
         if key not in self._doc_index.index:
@@ -25,11 +28,11 @@ class DatasetLoader:
         return self._doc_index.loc[key]
 
 
-def load_documents(path):
+def _load_documents(path):
     return pd.read_json(path, dtype={'doc_id': str})
 
-def load_queries(path):
+def _load_queries(path):
     return pd.read_json(path, dtype={'query_id': str})
 
-def load_qrels(path):
+def _load_qrels(path):
     return pd.read_json(path, dtype={'query_id': str, 'doc_id': str})

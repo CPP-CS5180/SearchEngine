@@ -3,7 +3,7 @@ import os
 import pandas as pd
 import pytest
 
-from data_loader import DatasetLoader, load_documents, load_queries, load_qrels
+from dataset import Dataset, _load_documents, _load_queries, _load_qrels
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 DOCS_PATH    = os.path.join(BASE_DIR, 'dataset/documents.json')
@@ -14,45 +14,45 @@ QRELS_PATH   = os.path.join(BASE_DIR, 'dataset/qrels.json')
 # --- standalone loader functions ---
 
 def test_load_documents_returns_dataframe():
-    assert isinstance(load_documents(DOCS_PATH), pd.DataFrame)
+    assert isinstance(_load_documents(DOCS_PATH), pd.DataFrame)
 
 def test_load_documents_has_correct_columns():
-    df = load_documents(DOCS_PATH)
+    df = _load_documents(DOCS_PATH)
     assert 'doc_id' in df.columns
     assert 'text' in df.columns
 
 def test_load_documents_not_empty():
-    assert len(load_documents(DOCS_PATH)) > 0
+    assert len(_load_documents(DOCS_PATH)) > 0
 
 def test_load_queries_returns_dataframe():
-    assert isinstance(load_queries(QUERIES_PATH), pd.DataFrame)
+    assert isinstance(_load_queries(QUERIES_PATH), pd.DataFrame)
 
 def test_load_queries_has_correct_columns():
-    df = load_queries(QUERIES_PATH)
+    df = _load_queries(QUERIES_PATH)
     assert 'query_id' in df.columns
     assert 'text' in df.columns
 
 def test_load_queries_not_empty():
-    assert len(load_queries(QUERIES_PATH)) > 0
+    assert len(_load_queries(QUERIES_PATH)) > 0
 
 def test_load_qrels_returns_dataframe():
-    assert isinstance(load_qrels(QRELS_PATH), pd.DataFrame)
+    assert isinstance(_load_qrels(QRELS_PATH), pd.DataFrame)
 
 def test_load_qrels_has_correct_columns():
-    df = load_qrels(QRELS_PATH)
+    df = _load_qrels(QRELS_PATH)
     assert 'query_id' in df.columns
     assert 'doc_id' in df.columns
     assert 'relevance' in df.columns
 
 def test_load_qrels_not_empty():
-    assert len(load_qrels(QRELS_PATH)) > 0
+    assert len(_load_qrels(QRELS_PATH)) > 0
 
 
 # --- DatasetLoader class ---
 
 @pytest.fixture(scope='module')
 def loader():
-    return DatasetLoader()
+    return Dataset()
 
 def test_dataset_loader_has_documents(loader):
     assert isinstance(loader.documents, pd.DataFrame)
