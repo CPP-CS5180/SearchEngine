@@ -8,7 +8,7 @@ from loguru import logger
 from dataset import Dataset
 from preprocessor import preprocess
 
-DEFAULT_BM25_K1 = 1.5
+DEFAULT_BM25_K1 = 1.8
 DEFAULT_BM25_B = 0.75
 DEFAULT_PER_PAGE = 5
 
