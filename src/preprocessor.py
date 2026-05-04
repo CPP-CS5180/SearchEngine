@@ -12,6 +12,7 @@ nltk.download("wordnet")
 stop_words = set(stopwords.words("english"))
 lemmatizer = WordNetLemmatizer()
 
+
 def preprocess(raw_texts: list[str]) -> list[str]:
     tokenized_texts = []
     for text in raw_texts:

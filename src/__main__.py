@@ -10,7 +10,9 @@ from search_engine import SearchEngine, DEFAULT_PER_PAGE
 MAX_VISIBLE_PAGES = 10
 
 
-def _build_pagination(current: int, total: int, max_visible: int = MAX_VISIBLE_PAGES) -> list[int | None]:
+def _build_pagination(
+    current: int, total: int, max_visible: int = MAX_VISIBLE_PAGES
+) -> list[int | None]:
     """Page numbers to render in the pagination nav. ``None`` marks an ellipsis gap."""
     if total <= max_visible:
         return list(range(1, total + 1))
