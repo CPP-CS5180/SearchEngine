@@ -7,6 +7,7 @@ import parse_args
 from parse_args import ArgNamespace
 from search_engine import SearchEngine
 
+MAX_DESCRIPTION_CHARS = 450
 
 def register_routes(app: Flask):
     search_engine = SearchEngine(dataset_path=app.config["DATASET_PATH"])
@@ -15,15 +16,36 @@ def register_routes(app: Flask):
     @app.route("/")
     def index():
         q = request.args.get("q", "")
-        results = search_engine.search(q) if q else {}
-        return render_template("index.html.j2", q=q, results=results)
+        page_num = int(request.args.get("page_num", 1))
+        results_per_page = int(request.args.get("per_page", 25))
+        if q:
+            results, total_results = search_engine.search(
+                q, page_index=page_num - 1, results_per_page=results_per_page
+            )
+        else:
+            results, total_results = {}, 0
+        results = {
+            doc_id: (text if len(text) <= MAX_DESCRIPTION_CHARS
+                     else text[:MAX_DESCRIPTION_CHARS].rstrip() + "...")
+            for doc_id, text in results.items()
+        }
+        total_pages = max(1, (total_results + results_per_page - 1) // results_per_page)
+        return render_template(
+            "index.html.j2",
+            q=q,
+            results=results,
+            page_num=page_num,
+            per_page=results_per_page,
+            total_pages=total_pages,
+            total_results=total_results,
+        )
 
     @app.route("/doc/<doc_id>")
     def doc_view(doc_id: str):
-        text = search_engine.get_dataset().get_document(doc_id)
-        if text is None:
+        document = search_engine.get_dataset().get_document(doc_id)
+        if document is None:
             abort(404)
-        return render_template("doc.html.j2", doc_id=doc_id, text=text)
+        return render_template("doc.html.j2", doc_id=doc_id, text=document["text"])
 
     @app.route("/api/v1/search", methods=["GET"])
     def search():
@@ -34,7 +56,7 @@ def register_routes(app: Flask):
         return jsonify(
             search_engine.search(
                 query, page_index=page_num - 1, results_per_page=results_per_page
-            )
+            )[0]
         )
 
 

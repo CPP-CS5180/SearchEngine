@@ -1,4 +1,5 @@
 import os
+from collections import Counter, defaultdict
 
 import pandas as pd
 from loguru import logger
@@ -52,13 +53,13 @@ class SearchEngine:
         return self._inverted_index
 
     def search(
-        self, query: str, page_index: int = 0, results_per_page: int = 25
-    ) -> dict[str, str]:
+            self, query: str, page_index: int = 0, results_per_page: int = 25
+    ) -> tuple[dict[str, str], int]:
         """
         :param query:
         :param page_index:
         :param results_per_page:
-        :return:
+        :return: tuple (result -> document text, number of total results for the query)
         """
         if self._dataset is None:
             raise ValueError("dataset not loaded yet, call init() first")
@@ -69,23 +70,26 @@ class SearchEngine:
         # Tokenize query
         tokenized_query = SearchEngine._tokenize_text(query)
 
+        query_id = self._dataset.get_query_id(query)
         relevance_dict = self._dataset.get_relevance_dictionary()
         # retrieve all relevant doc_ids
         if query in self._query_cache:
             results = list(self._query_cache[query])
-        elif query in relevance_dict:
-            results = list(relevance_dict[query])
+        elif query_id in relevance_dict:
+            results = list(relevance_dict[query_id])
             self._query_cache[query] = results
         else:
-            results = self._relevant_docs_from_reverse_index(tokenized_query)
+            results = self._match_relevant_docs(tokenized_query)
             self._query_cache[query] = results
+
+        total_results: int = len(results)
 
         results = self._rank(tokenized_query, results)
         results = self._paginate(results, page_index, results_per_page)
 
-        return {doc_id: self._dataset.get_document(doc_id) for doc_id in results}
+        return {doc_id: self._dataset.get_document(doc_id)["text"] for doc_id in results}, total_results
 
-    def _relevant_docs_from_reverse_index(self, tokenized_query: list[str]) -> list[str]:
+    def _match_relevant_docs(self, tokenized_query: list[str]) -> list[str]:
         if self._inverted_index is None:
             raise ValueError("inverted index not created yet, call init() first")
 
@@ -113,28 +117,32 @@ class SearchEngine:
         return results[start:end]
 
     def _rank(
-        self, tokenized_query: list[str], results: list[str]
+            self, tokenized_query: list[str], results: list[str]
     ) -> list[str]:
         """
         :param tokenized_query: tokenized query terms
         :param results: tokenized documents that match the query terms, dict mapping doc_id -> list of tokenized terms
         :return: list of doc_ids ranked by relevance to the query (most relevant first)
         """
-        pass
+        return results
 
     def _create_inverted_index(
-        self,
-        tokenized_docs: dict[str, list[str]],
+            self,
+            tokenized_docs: dict[str, list[str]],
     ) -> dict[str, list[tuple[str, int]]]:
         """
         :param tokenized_docs: dict mapping doc_id -> list of tokenized terms
         :return: dict mapping term -> list of (doc_id, term_frequency) tuples
         e.g. {"hello": [("doc_1", 3), ("doc_2", 2)], "world": [("doc_1", 2)]}
         """
-        # construct inverted index and return it
-        self.inverted_index = {}
-        return self.inverted_index
+        inverted_index: dict[str, list[tuple[str, int]]] = defaultdict(list)
 
+        for doc_id, tokens in tokenized_docs.items():
+            for token, count in Counter(tokens).items():
+                inverted_index[token].append((doc_id, count))
+
+        self._inverted_index = inverted_index
+        return inverted_index
     @staticmethod
     def tokenize_docs(docs: pd.DataFrame) -> dict[str, list[str]]:
         """
@@ -151,4 +159,3 @@ class SearchEngine:
     @staticmethod
     def _tokenize_text(text: str) -> list[str]:
         return preprocess([text])
-

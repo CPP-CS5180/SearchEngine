@@ -1,10 +1,16 @@
 {% extends "base.html.j2" %}
 
 {% block content %}
-<div id="results">
-    {% if q and not results %}
-    <p>No results.</p>
+{% if q %}
+<p class="results-summary">
+    {% if total_results == 0 %}
+    No results.
+    {% else %}
+    {{ total_results }} result{{ '' if total_results == 1 else 's' }} - page {{ page_num }} of {{ total_pages }}
     {% endif %}
+</p>
+{% endif %}
+<div id="results">
     {% for doc_id, text in results.items() %}
     <div class="result">
         <a class="doc-id" href="{{ url_for('doc_view', doc_id=doc_id) }}">{{ doc_id }}</a>
@@ -12,4 +18,19 @@
     </div>
     {% endfor %}
 </div>
+{% if q and total_results > 0 and total_pages > 1 %}
+<nav class="pagination">
+    {% if page_num > 1 %}
+    <a href="{{ url_for('index', q=q, page_num=page_num - 1, per_page=per_page) }}">&laquo; Prev</a>
+    {% else %}
+    <span class="disabled">&laquo; Prev</span>
+    {% endif %}
+    <span class="page-indicator">Page {{ page_num }} / {{ total_pages }}</span>
+    {% if page_num < total_pages %}
+    <a href="{{ url_for('index', q=q, page_num=page_num + 1, per_page=per_page) }}">Next &raquo;</a>
+    {% else %}
+    <span class="disabled">Next &raquo;</span>
+    {% endif %}
+</nav>
+{% endif %}
 {% endblock %}

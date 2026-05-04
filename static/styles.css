@@ -7,3 +7,8 @@ body { font-family: sans-serif; margin: 1rem; }
 .result .doc-id { font-weight: bold; margin-bottom: 0.25rem; }
 .result .doc-text { color: #333; }
 .doc-body { max-width: 800px; white-space: pre-wrap; }
+.results-summary { max-width: 800px; color: #666; margin-top: 1rem; }
+.pagination { display: flex; gap: 1rem; align-items: center; max-width: 800px; margin: 1.5rem 0; }
+.pagination a { text-decoration: none; }
+.pagination .disabled { color: #bbb; }
+.pagination .page-indicator { color: #555; }
