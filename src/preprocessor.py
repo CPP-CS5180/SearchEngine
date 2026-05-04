@@ -1,5 +1,4 @@
 import re
-import pandas as pd
 import nltk
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
@@ -29,7 +28,6 @@ def preprocess(raw_texts: list[str]) -> list[str]:
         tokens = [t for t in tokens if t not in stop_words and len(t) > 1]
 
         # lemmatization
-        tokens = [lemmatizer.lemmatize(t) for t in tokens]
+        tokenized_texts = [lemmatizer.lemmatize(t) for t in tokens]
 
-        tokenized_texts.append(" ".join(tokens))
     return tokenized_texts

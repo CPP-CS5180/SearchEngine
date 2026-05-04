@@ -40,7 +40,7 @@ class SearchEngine:
         )
 
         logger.info("Creating inverted index...")
-        self._create_inverted_index(tokenized_docs)
+        self._inverted_index = self._create_inverted_index(tokenized_docs)
 
     def get_dataset(self) -> Dataset:
         if self._dataset is None:
@@ -126,8 +126,8 @@ class SearchEngine:
         """
         return results
 
+    @staticmethod
     def _create_inverted_index(
-            self,
             tokenized_docs: dict[str, list[str]],
     ) -> dict[str, list[tuple[str, int]]]:
         """
@@ -141,8 +141,8 @@ class SearchEngine:
             for token, count in Counter(tokens).items():
                 inverted_index[token].append((doc_id, count))
 
-        self._inverted_index = inverted_index
-        return inverted_index
+        return dict(inverted_index)
+
     @staticmethod
     def tokenize_docs(docs: pd.DataFrame) -> dict[str, list[str]]:
         """
