@@ -7,6 +7,7 @@ class ArgNamespace(argparse.Namespace):
     debug: bool
     dataset_path: str
 
+
 def parse_args() -> ArgNamespace:
     parser = argparse.ArgumentParser(description="Search Engine")
     parser.add_argument(

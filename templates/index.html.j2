@@ -1,11 +1,6 @@
-{% extends "base.html" %}
+{% extends "base.html.j2" %}
 
 {% block content %}
-<form class="search-bar" method="get" action="{{ url_for('index') }}">
-    <input type="text" name="q" placeholder="Search..." value="{{ q }}" autofocus>
-    <button type="submit">Search</button>
-</form>
-
 <div id="results">
     {% if q and not results %}
     <p>No results.</p>
