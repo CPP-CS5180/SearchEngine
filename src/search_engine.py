@@ -12,8 +12,14 @@ DEFAULT_BM25_K1 = 1.5
 DEFAULT_BM25_B = 0.75
 DEFAULT_PER_PAGE = 5
 
+
 class SearchEngine:
-    def __init__(self, dataset_path: str, bm25_k1: float = DEFAULT_BM25_K1, bm25_b: float = DEFAULT_BM25_B):
+    def __init__(
+        self,
+        dataset_path: str,
+        bm25_k1: float = DEFAULT_BM25_K1,
+        bm25_b: float = DEFAULT_BM25_B,
+    ):
         """
         Does not load the dataset or construct the inverted index yet, call init() to do that
         :param dataset_path:
@@ -21,7 +27,7 @@ class SearchEngine:
         self._dataset_path = dataset_path
         self._dataset: Dataset | None = None
         self._inverted_index: dict[str, list[tuple[str, int]]] | None = None
-        self._query_cache: dict[str, list[str]] = {}  # query_id -> list[doc_id]
+        self._query_cache: dict[str, set[str]] = {}  # query_id -> set[doc_id]
         self._tokenized_docs: dict[str, list[str]] = {}
         self._doc_lengths: dict[str, int] = {}
         self._avg_doc_length: float = 0.0
@@ -47,7 +53,9 @@ class SearchEngine:
             dataset.get_documents()
         )
 
-        self._doc_lengths = {doc_id: len(tokens) for doc_id, tokens in tokenized_docs.items()}
+        self._doc_lengths = {
+            doc_id: len(tokens) for doc_id, tokens in tokenized_docs.items()
+        }
         self._avg_doc_length = (
             sum(self._doc_lengths.values()) / len(self._doc_lengths)
             if self._doc_lengths
@@ -68,7 +76,7 @@ class SearchEngine:
         return self._inverted_index
 
     def search(
-            self, query: str, page_index: int = 0, results_per_page: int = DEFAULT_PER_PAGE
+        self, query: str, page_index: int = 0, results_per_page: int = DEFAULT_PER_PAGE
     ) -> tuple[dict[str, str], int]:
         """
         :param query:
@@ -86,9 +94,9 @@ class SearchEngine:
         tokenized_query = SearchEngine._tokenize_text(query)
 
         if query in self._query_cache:
-            results = list(self._query_cache[query])
+            results = self._query_cache[query]
         else:
-            results = list(self._match_relevant_docs(tokenized_query))
+            results = self._match_relevant_docs(tokenized_query)
             self._query_cache[query] = results
 
         total_results: int = len(results)
@@ -96,21 +104,31 @@ class SearchEngine:
         results = self._rank(tokenized_query, results)
         results = self._paginate(results, page_index, results_per_page)
 
-        return {doc_id: self._dataset.get_document(doc_id)["text"] for doc_id in results}, total_results
+        return {
+            doc_id: self._dataset.get_document(doc_id)["text"] for doc_id in results
+        }, total_results
+
+    def set_bm25_params(self, *, bm25_k1: float = None, bm25_b: float = None):
+        if bm25_k1 is not None:
+            self._bm25_k1 = bm25_k1
+        if bm25_b is not None:
+            self._bm25_b = bm25_b
 
     def _match_relevant_docs(self, tokenized_query: list[str]) -> set[str]:
         if self._inverted_index is None:
             raise ValueError("inverted index not created yet, call init() first")
 
         return {
-                doc_id[0]
-                for term in tokenized_query
-                if term in self._inverted_index
-                for doc_id in self._inverted_index[term]
-            }
+            doc_id[0]
+            for term in tokenized_query
+            if term in self._inverted_index
+            for doc_id in self._inverted_index[term]
+        }
 
     @staticmethod
-    def _paginate(results: list[str], page_index: int, results_per_page: int) -> list[str]:
+    def _paginate(
+        results: list[str], page_index: int, results_per_page: int
+    ) -> list[str]:
         """
         :param results: list of doc_ids matching the query terms, ranked by relevance
         :param page_index: 0-indexed page number to return
@@ -123,9 +141,7 @@ class SearchEngine:
         end = start + results_per_page
         return results[start:end]
 
-    def _rank(
-            self, tokenized_query: list[str], results: list[str]
-    ) -> list[str]:
+    def _rank(self, tokenized_query: list[str], results: set[str]) -> list[str]:
         """
         Rank candidate documents using Okapi BM25.
 
@@ -137,11 +153,10 @@ class SearchEngine:
             raise ValueError("inverted index not created yet, call init() first")
 
         if not results:
-            return results
+            return []
 
         n_docs = len(self._doc_lengths)
         avgdl = self._avg_doc_length or 1.0
-        candidates = set(results)
         scores: dict[str, float] = defaultdict(float)
 
         for term in set(tokenized_query):
@@ -152,18 +167,30 @@ class SearchEngine:
             df = len(postings)
             idf = math.log((n_docs - df + 0.5) / (df + 0.5) + 1.0)
 
-            for doc_id, tf in postings:
-                if doc_id not in candidates:
-                    continue
-                dl = self._doc_lengths[doc_id]
-                norm = 1.0 - self._bm25_b + self._bm25_b * dl / avgdl
-                scores[doc_id] += idf * (tf * (self._bm25_k1 + 1.0)) / (tf + self._bm25_k1 * norm)
+            self._relevance_scores_from_posting(avgdl, results, idf, postings, scores)
 
         return sorted(results, key=lambda d: scores.get(d, 0.0), reverse=True)
 
+    def _relevance_scores_from_posting(
+        self,
+        avgdl: float,
+        candidates: set[str],
+        idf: float,
+        postings: list[tuple[str, int]],
+        scores: dict[str, float],
+    ):
+        for doc_id, tf in postings:
+            if doc_id not in candidates:
+                continue
+            dl = self._doc_lengths[doc_id]
+            norm = 1.0 - self._bm25_b + self._bm25_b * dl / avgdl
+            scores[doc_id] += (
+                idf * (tf * (self._bm25_k1 + 1.0)) / (tf + self._bm25_k1 * norm)
+            )
+
     @staticmethod
     def _create_inverted_index(
-            tokenized_docs: dict[str, list[str]],
+        tokenized_docs: dict[str, list[str]],
     ) -> dict[str, list[tuple[str, int]]]:
         """
         :param tokenized_docs: dict mapping doc_id -> list of tokenized terms
