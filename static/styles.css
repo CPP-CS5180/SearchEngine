@@ -1,0 +1,9 @@
+body { font-family: sans-serif; margin: 1rem; }
+.search-bar { display: flex; gap: 0.5rem; max-width: 600px; }
+.search-bar input { flex: 1; padding: 0.5rem; font-size: 1rem; }
+.search-bar button { padding: 0.5rem 1rem; font-size: 1rem; cursor: pointer; }
+#results { margin-top: 1.5rem; max-width: 800px; }
+.result { padding: 0.75rem 0; border-bottom: 1px solid #eee; }
+.result .doc-id { font-weight: bold; margin-bottom: 0.25rem; }
+.result .doc-text { color: #333; }
+.doc-body { max-width: 800px; white-space: pre-wrap; }

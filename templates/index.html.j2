@@ -1,0 +1,15 @@
+{% extends "base.html.j2" %}
+
+{% block content %}
+<div id="results">
+    {% if q and not results %}
+    <p>No results.</p>
+    {% endif %}
+    {% for doc_id, text in results.items() %}
+    <div class="result">
+        <a class="doc-id" href="{{ url_for('doc_view', doc_id=doc_id) }}">{{ doc_id }}</a>
+        <div class="doc-text">{{ text }}</div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

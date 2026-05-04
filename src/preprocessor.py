@@ -6,21 +6,21 @@ from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 
 # Will be downloaded when the file is executed. (only one time download)
-nltk.download('punkt_tab', quiet=True)
-nltk.download('stopwords', quiet=True)
-nltk.download('wordnet', quiet=True)
+nltk.download("punkt_tab", quiet=True)
+nltk.download("stopwords", quiet=True)
+nltk.download("wordnet", quiet=True)
 
-stop_words = set(stopwords.words('english'))
+stop_words = set(stopwords.words("english"))
 lemmatizer = WordNetLemmatizer()
 
-def preprocess(raw_texts):
+def preprocess(raw_texts: list[str]) -> list[str]:
     tokenized_texts = []
     for text in raw_texts:
         # lowercasing
         text = text.lower()
 
         # stripping punctuations/numbers
-        text = re.sub(r'[^a-z\s]', '', text)
+        text = re.sub(r"[^a-z\s]", "", text)
 
         # tokenization
         tokens = word_tokenize(text)
@@ -31,12 +31,5 @@ def preprocess(raw_texts):
         # lemmatization
         tokens = [lemmatizer.lemmatize(t) for t in tokens]
 
-        tokenized_texts.append(' '.join(tokens))
+        tokenized_texts.append(" ".join(tokens))
     return tokenized_texts
-
-def preprocess_documents(documents_df):
-    tokenized = preprocess(documents_df['text'].tolist())
-    return pd.DataFrame({
-        'doc_id': documents_df['doc_id'].values,
-        'tokenized_text': tokenized
-    })
