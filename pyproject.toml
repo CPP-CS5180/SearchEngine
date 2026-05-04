@@ -12,6 +12,7 @@ dependencies = [
 
 [project.scripts]
 search_engine = "__main__:main"
+benchmark = "benchmark:main"
 
 [dependency-groups]
 dev = [
