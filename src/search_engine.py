@@ -8,12 +8,12 @@ from loguru import logger
 from dataset import Dataset
 from preprocessor import preprocess
 
-BM25_K1 = 1.5
-BM25_B = 0.75
+DEFAULT_BM25_K1 = 1.5
+DEFAULT_BM25_B = 0.75
 DEFAULT_PER_PAGE = 5
 
 class SearchEngine:
-    def __init__(self, dataset_path: str):
+    def __init__(self, dataset_path: str, bm25_k1: float = DEFAULT_BM25_K1, bm25_b: float = DEFAULT_BM25_B):
         """
         Does not load the dataset or construct the inverted index yet, call init() to do that
         :param dataset_path:
@@ -25,6 +25,8 @@ class SearchEngine:
         self._tokenized_docs: dict[str, list[str]] = {}
         self._doc_lengths: dict[str, int] = {}
         self._avg_doc_length: float = 0.0
+        self._bm25_k1 = bm25_k1
+        self._bm25_b = bm25_b
 
     def init(self):
         """
@@ -154,8 +156,8 @@ class SearchEngine:
                 if doc_id not in candidates:
                     continue
                 dl = self._doc_lengths[doc_id]
-                norm = 1.0 - BM25_B + BM25_B * dl / avgdl
-                scores[doc_id] += idf * (tf * (BM25_K1 + 1.0)) / (tf + BM25_K1 * norm)
+                norm = 1.0 - self._bm25_b + self._bm25_b * dl / avgdl
+                scores[doc_id] += idf * (tf * (self._bm25_k1 + 1.0)) / (tf + self._bm25_k1 * norm)
 
         return sorted(results, key=lambda d: scores.get(d, 0.0), reverse=True)
 
