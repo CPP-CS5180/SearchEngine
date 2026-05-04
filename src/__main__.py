@@ -5,9 +5,28 @@ from loguru import logger
 
 import parse_args
 from parse_args import ArgNamespace
-from search_engine import SearchEngine
+from search_engine import SearchEngine, DEFAULT_PER_PAGE
 
-MAX_DESCRIPTION_CHARS = 450
+MAX_VISIBLE_PAGES = 10
+
+
+def _build_pagination(current: int, total: int, max_visible: int = MAX_VISIBLE_PAGES) -> list[int | None]:
+    """Page numbers to render in the pagination nav. ``None`` marks an ellipsis gap."""
+    if total <= max_visible:
+        return list(range(1, total + 1))
+
+    edge = max_visible - 3
+    if current <= edge:
+        return list(range(1, max_visible - 1)) + [None, total]
+    if current > total - edge:
+        return [1, None] + list(range(total - (max_visible - 3), total + 1))
+
+    window = max_visible - 4
+    half = window // 2
+    start = current - half - 1
+    end = current + (window - half)
+    return [1, None] + list(range(start, end + 1)) + [None, total]
+
 
 def register_routes(app: Flask):
     search_engine = SearchEngine(dataset_path=app.config["DATASET_PATH"])
@@ -17,19 +36,16 @@ def register_routes(app: Flask):
     def index():
         q = request.args.get("q", "")
         page_num = int(request.args.get("page_num", 1))
-        results_per_page = int(request.args.get("per_page", 25))
+        results_per_page = int(request.args.get("per_page", DEFAULT_PER_PAGE))
         if q:
             results, total_results = search_engine.search(
                 q, page_index=page_num - 1, results_per_page=results_per_page
             )
         else:
             results, total_results = {}, 0
-        results = {
-            doc_id: (text if len(text) <= MAX_DESCRIPTION_CHARS
-                     else text[:MAX_DESCRIPTION_CHARS].rstrip() + "...")
-            for doc_id, text in results.items()
-        }
+
         total_pages = max(1, (total_results + results_per_page - 1) // results_per_page)
+        pages = _build_pagination(page_num, total_pages)
         return render_template(
             "index.html.j2",
             q=q,
@@ -38,6 +54,7 @@ def register_routes(app: Flask):
             per_page=results_per_page,
             total_pages=total_pages,
             total_results=total_results,
+            pages=pages,
         )
 
     @app.route("/doc/<doc_id>")
@@ -51,7 +68,7 @@ def register_routes(app: Flask):
     def search():
         query = request.args.get("q", "")
         page_num = int(request.args.get("page_num", 1))
-        results_per_page = int(request.args.get("per_page", 25))
+        results_per_page = int(request.args.get("per_page", DEFAULT_PER_PAGE))
         logger.debug(f"search query: {query!r}")
         return jsonify(
             search_engine.search(
