@@ -1,3 +1,4 @@
+import math
 import os
 from collections import Counter, defaultdict
 
@@ -7,6 +8,9 @@ from loguru import logger
 from dataset import Dataset
 from preprocessor import preprocess
 
+BM25_K1 = 1.5
+BM25_B = 0.75
+DEFAULT_PER_PAGE = 5
 
 class SearchEngine:
     def __init__(self, dataset_path: str):
@@ -19,6 +23,8 @@ class SearchEngine:
         self._inverted_index: dict[str, list[tuple[str, int]]] | None = None
         self._query_cache: dict[str, list[str]] = {}  # query_id -> list[doc_id]
         self._tokenized_docs: dict[str, list[str]] = {}
+        self._doc_lengths: dict[str, int] = {}
+        self._avg_doc_length: float = 0.0
 
     def init(self):
         """
@@ -39,6 +45,13 @@ class SearchEngine:
             dataset.get_documents()
         )
 
+        self._doc_lengths = {doc_id: len(tokens) for doc_id, tokens in tokenized_docs.items()}
+        self._avg_doc_length = (
+            sum(self._doc_lengths.values()) / len(self._doc_lengths)
+            if self._doc_lengths
+            else 0.0
+        )
+
         logger.info("Creating inverted index...")
         self._inverted_index = self._create_inverted_index(tokenized_docs)
 
@@ -53,7 +66,7 @@ class SearchEngine:
         return self._inverted_index
 
     def search(
-            self, query: str, page_index: int = 0, results_per_page: int = 25
+            self, query: str, page_index: int = 0, results_per_page: int = DEFAULT_PER_PAGE
     ) -> tuple[dict[str, str], int]:
         """
         :param query:
@@ -70,16 +83,10 @@ class SearchEngine:
         # Tokenize query
         tokenized_query = SearchEngine._tokenize_text(query)
 
-        query_id = self._dataset.get_query_id(query)
-        relevance_dict = self._dataset.get_relevance_dictionary()
-        # retrieve all relevant doc_ids
         if query in self._query_cache:
             results = list(self._query_cache[query])
-        elif query_id in relevance_dict:
-            results = list(relevance_dict[query_id])
-            self._query_cache[query] = results
         else:
-            results = self._match_relevant_docs(tokenized_query)
+            results = list(self._match_relevant_docs(tokenized_query))
             self._query_cache[query] = results
 
         total_results: int = len(results)
@@ -89,18 +96,16 @@ class SearchEngine:
 
         return {doc_id: self._dataset.get_document(doc_id)["text"] for doc_id in results}, total_results
 
-    def _match_relevant_docs(self, tokenized_query: list[str]) -> list[str]:
+    def _match_relevant_docs(self, tokenized_query: list[str]) -> set[str]:
         if self._inverted_index is None:
             raise ValueError("inverted index not created yet, call init() first")
 
-        return list(
-            {
+        return {
                 doc_id[0]
                 for term in tokenized_query
                 if term in self._inverted_index
                 for doc_id in self._inverted_index[term]
             }
-        )
 
     @staticmethod
     def _paginate(results: list[str], page_index: int, results_per_page: int) -> list[str]:
@@ -120,11 +125,39 @@ class SearchEngine:
             self, tokenized_query: list[str], results: list[str]
     ) -> list[str]:
         """
+        Rank candidate documents using Okapi BM25.
+
         :param tokenized_query: tokenized query terms
-        :param results: tokenized documents that match the query terms, dict mapping doc_id -> list of tokenized terms
-        :return: list of doc_ids ranked by relevance to the query (most relevant first)
+        :param results: doc_ids that match the query terms
+        :return: list of doc_ids ranked by BM25 score (most relevant first)
         """
-        return results
+        if self._inverted_index is None:
+            raise ValueError("inverted index not created yet, call init() first")
+
+        if not results:
+            return results
+
+        n_docs = len(self._doc_lengths)
+        avgdl = self._avg_doc_length or 1.0
+        candidates = set(results)
+        scores: dict[str, float] = defaultdict(float)
+
+        for term in set(tokenized_query):
+            postings = self._inverted_index.get(term)
+            if not postings:
+                continue
+
+            df = len(postings)
+            idf = math.log((n_docs - df + 0.5) / (df + 0.5) + 1.0)
+
+            for doc_id, tf in postings:
+                if doc_id not in candidates:
+                    continue
+                dl = self._doc_lengths[doc_id]
+                norm = 1.0 - BM25_B + BM25_B * dl / avgdl
+                scores[doc_id] += idf * (tf * (BM25_K1 + 1.0)) / (tf + BM25_K1 * norm)
+
+        return sorted(results, key=lambda d: scores.get(d, 0.0), reverse=True)
 
     @staticmethod
     def _create_inverted_index(
