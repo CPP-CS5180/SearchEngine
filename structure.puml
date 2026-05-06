@@ -1,0 +1,75 @@
+@startuml SearchEngine
+
+skinparam classAttributeIconSize 0
+left to right direction
+
+package "src" {
+
+    class SearchEngine {
+        - _dataset_path : str
+        - _dataset : Dataset
+        - _inverted_index : dict<str, list<tuple<str, int>>>
+        - _query_cache : dict<str, set<str>>
+        - _tokenized_docs : dict<str, list<str>>
+        - _doc_lengths : dict<str, int>
+        - _avg_doc_length : float
+        - _bm25_k1 : float
+        - _bm25_b : float
+        + __init__(dataset_path: str, bm25_k1: float, bm25_b: float)
+        + init() : void
+        + get_dataset() : Dataset
+        + get_inverted_index() : dict
+        + search(query: str, page_index: int, results_per_page: int) : tuple<dict, int>
+        + set_bm25_params(bm25_k1: float, bm25_b: float) : void
+        - _match_relevant_docs(tokenized_query: list<str>) : set<str>
+        - _rank(tokenized_query: list<str>, results: set<str>) : list<str>
+        - _relevance_scores_from_posting(avgdl, candidates, idf, postings, scores) : void
+        + {static} tokenize_docs(docs: DataFrame) : dict<str, list<str>>
+        - {static} _tokenize_text(text: str) : list<str>
+        - {static} _create_inverted_index(tokenized_docs) : dict
+        - {static} _paginate(results, page_index, results_per_page) : list<str>
+    }
+
+    class Dataset {
+        - _documents : DataFrame
+        - _queries : DataFrame
+        - _relevance_dictionary : dict<str, set<str>>
+        + __init__(docs_path: str, queries_path: str, qrels_path: str)
+        + get_relevance_dictionary() : dict<str, set<str>>
+        + get_query_id(query_text: str) : str
+        + get_query_text(query_id: str) : str
+        + get_document(doc_id: str) : Series
+        + get_documents() : DataFrame
+        + num_documents() : int
+        - {static} _create_relevance_dictionary(qrel_df: DataFrame) : dict
+    }
+
+    class "preprocessor" as preprocessor << (M, orchid) module >> {
+        + stop_words : set
+        + lemmatizer : WordNetLemmatizer
+        + preprocess(raw_texts: list<str>) : list<str>
+    }
+
+    class "__main__" as Main << (M, orchid) module >> {
+        + MAX_VISIBLE_PAGES : int
+        + _build_pagination(current: int, total: int, max_visible: int) : list
+        + register_routes(app: Flask) : void
+        + setup_logger(debug: bool) : void
+        + create_app(args) : Flask
+        + main() : void
+    }
+}
+
+class "Flask" as Flask << (E, lightblue) external >> {
+    + route("/") : index()
+    + route("/doc/<doc_id>") : doc_view()
+    + route("/api/v1/search") : search()
+}
+
+SearchEngine "1" *-- "1" Dataset : composes
+SearchEngine ..> preprocessor : uses
+Main ..> SearchEngine : instantiates
+Main ..> Flask : creates
+Flask ..> SearchEngine : queries
+
+@enduml

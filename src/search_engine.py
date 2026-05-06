@@ -119,10 +119,10 @@ class SearchEngine:
             raise ValueError("inverted index not created yet, call init() first")
 
         return {
-            doc_id[0]
+            row[0] # doc_id
             for term in tokenized_query
             if term in self._inverted_index
-            for doc_id in self._inverted_index[term]
+            for row in self._inverted_index[term]
         }
 
     @staticmethod
